@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Incident Reports — Admin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+        --bg:       #F4F4F0;
+        --surface:  #ECEEE8;
+        --card:     #E8EAE4;
+        --border:   #D4D6CE;
+        --accent:   #6D9AC4;
+        --accent2:  #98BE59;
+        --muted:    #5a5450;
+        --text:     #0f1410;
+        --dim:      #3d4a3d;
+        --danger:   #c0392b;
+        --warn:     #b8860b;
+    }
+
+    html, body { background: var(--bg); color: var(--text); font-family: 'Syne', sans-serif; min-height: 100vh; }
+
+    body::after {
+      content: '';
+      position: fixed; inset: 0; pointer-events: none; z-index: 9999;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");
+      opacity: 0.06;
+    }
+
+    /* ─── Header ─────────────────────────────── */
+    header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 1rem 2rem;
+      border-bottom: 1px solid var(--border);
+      position: sticky; top: 0;
+      background: rgba(244,244,240,0.94); backdrop-filter: blur(10px);
+      z-index: 50;
+    }
+    .logo {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.65rem; letter-spacing: 0.25em; text-transform: uppercase;
+      color: var(--accent);
+    }
+    .logo em { color: var(--muted); font-style: normal; }
+    #auth-area { display: flex; align-items: center; gap: 1rem; }
+    #user-email { font-family: 'IBM Plex Mono', monospace; font-size: 0.65rem; color: var(--muted); }
+
+    .btn {
+      font-family: 'Syne', sans-serif; font-weight: 700; font-size: 0.65rem;
+      letter-spacing: 0.15em; text-transform: uppercase;
+      padding: 0.45rem 1.1rem; cursor: pointer; transition: all 0.15s;
+      border: 1px solid var(--border); background: transparent; color: var(--dim);
+    }
+    .btn:hover { border-color: var(--accent); color: var(--accent); }
+    .btn-login { border-color: var(--accent); color: var(--accent); }
+    .btn-login:hover { background: var(--accent); color: var(--bg); }
+
+    /* ─── States ─────────────────────────────── */
+    .state-screen {
+      display: flex; flex-direction: column; align-items: center;
+      justify-content: center; gap: 1.25rem; min-height: 80vh; text-align: center;
+    }
+    .state-tag { font-family: 'IBM Plex Mono', monospace; font-size: 0.6rem; letter-spacing: 0.2em; color: var(--muted); text-transform: uppercase; }
+    .state-headline { font-size: 2.2rem; font-weight: 800; line-height: 1.1; }
+    .state-sub { font-size: 0.85rem; color: var(--dim); max-width: 340px; line-height: 1.6; }
+
+    .spinner { width: 28px; height: 28px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.7s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ─── Main ───────────────────────────────── */
+    main { max-width: 1480px; margin: 0 auto; padding: 2rem; }
+
+    /* ─── Stats ──────────────────────────────── */
+    #stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; background: var(--border); border: 1px solid var(--border); margin-bottom: 1.75rem; }
+    .stat { background: var(--surface); padding: 1.1rem 1.4rem; }
+    .stat-label { font-family: 'IBM Plex Mono', monospace; font-size: 0.55rem; letter-spacing: 0.2em; color: var(--muted); text-transform: uppercase; margin-bottom: 0.3rem; }
+    .stat-val { font-size: 1.9rem; font-weight: 800; color: var(--accent); line-height: 1; }
+
+    /* ─── Controls ───────────────────────────── */
+    #controls { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1.25rem; }
+    #search { flex: 1; background: var(--surface); border: 1px solid var(--border); color: var(--text); font-family: 'IBM Plex Mono', monospace; font-size: 0.75rem; padding: 0.55rem 0.9rem; outline: none; transition: border-color 0.15s; }
+    #search::placeholder { color: var(--muted); }
+    #search:focus { border-color: var(--accent); }
+
+    /* ─── Table ──────────────────────────────── */
+    .table-wrap { border: 1px solid var(--border); overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+    thead tr { border-bottom: 1px solid var(--border); background: var(--surface); }
+    th { font-family: 'IBM Plex Mono', monospace; font-size: 0.55rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--muted); text-align: left; padding: 0.7rem 1rem; font-weight: 400; white-space: nowrap; }
+    tbody tr { border-bottom: 1px solid var(--border); cursor: pointer; transition: background 0.1s; }
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: var(--surface); }
+    tbody tr.loading-row td, tbody tr.empty-row td { text-align: center; padding: 3rem; font-family: 'IBM Plex Mono', monospace; font-size: 0.7rem; color: var(--muted); cursor: default; }
+    tbody tr.loading-row:hover, tbody tr.empty-row:hover { background: transparent; }
+    td { padding: 0.8rem 1rem; vertical-align: middle; }
+
+    .td-id { font-family: 'IBM Plex Mono', monospace; font-size: 0.62rem; color: var(--dim); max-width: 110px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .td-short { font-weight: 600; font-size: 0.82rem; max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .td-short.none { color: var(--muted); font-weight: 400; font-style: italic; }
+
+    .frames-strip { display: flex; gap: 3px; }
+    .frame-thumb { width: 38px; height: 38px; object-fit: cover; border: 1px solid var(--border); flex-shrink: 0; }
+    .frame-ph { width: 38px; height: 38px; background: var(--surface); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; font-size: 0.5rem; font-family: 'IBM Plex Mono', monospace; color: var(--muted); flex-shrink: 0; }
+    .frame-more { width: 38px; height: 38px; background: var(--border); display: flex; align-items: center; justify-content: center; font-family: 'IBM Plex Mono', monospace; font-size: 0.55rem; color: var(--dim); flex-shrink: 0; }
+
+    .badge { font-family: 'IBM Plex Mono', monospace; font-size: 0.55rem; letter-spacing: 0.1em; text-transform: uppercase; padding: 0.18rem 0.45rem; border: 1px solid; display: inline-block; white-space: nowrap; }
+    .badge-done    { color: var(--accent2); border-color: var(--accent2); }
+    .badge-pending { color: var(--warn);    border-color: var(--warn); }
+    .badge-error   { color: var(--danger);  border-color: var(--danger); }
+    .badge-default { color: var(--muted);   border-color: var(--muted); }
+
+    .td-date { font-family: 'IBM Plex Mono', monospace; font-size: 0.62rem; color: var(--muted); white-space: nowrap; }
+    .td-loc  { font-family: 'IBM Plex Mono', monospace; font-size: 0.6rem; color: var(--muted); white-space: nowrap; }
+
+    /* ─── Modal ──────────────────────────────── */
+    #overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.88); backdrop-filter: blur(6px); z-index: 100; display: none; align-items: flex-start; justify-content: center; padding: 2rem; overflow-y: auto; }
+    #overlay.open { display: flex; }
+    #modal { background: var(--card); border: 1px solid var(--border); width: 100%; max-width: 900px; margin: auto; animation: slideUp 0.18s ease-out; }
+    @keyframes slideUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+
+    #modal-header { display: flex; align-items: center; justify-content: space-between; padding: 1rem 1.4rem; border-bottom: 1px solid var(--border); }
+    #modal-report-id { font-family: 'IBM Plex Mono', monospace; font-size: 0.62rem; color: var(--dim); letter-spacing: 0.08em; }
+    #modal-close { background: none; border: none; color: var(--muted); font-size: 1.1rem; cursor: pointer; line-height: 1; transition: color 0.15s; }
+    #modal-close:hover { color: var(--text); }
+
+    #modal-body { padding: 1.4rem; display: flex; flex-direction: column; gap: 1.4rem; }
+
+    .m-label { font-family: 'IBM Plex Mono', monospace; font-size: 0.55rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--muted); margin-bottom: 0.55rem; display: flex; align-items: center; gap: 0.6rem; }
+    .m-label::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+    #modal-short { font-size: 1.1rem; font-weight: 700; margin-bottom: 0.45rem; }
+    #modal-full  { font-size: 0.82rem; color: var(--dim); line-height: 1.75; }
+    #modal-synonyms { font-size: 0.82rem; color: var(--dim); line-height: 1.75; }
+
+    #modal-frames { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+    .m-frame { position: relative; background: var(--surface); border: 1px solid var(--border); overflow: hidden; }
+    .m-frame img { width: 100%; height: 200px; object-fit: cover; display: block; }
+    .m-frame-conf { position: absolute; bottom: 0; right: 0; background: rgba(0,0,0,0.75); padding: 0.15rem 0.35rem; font-family: 'IBM Plex Mono', monospace; font-size: 0.55rem; color: var(--accent); }
+    .m-frame-mask { position: absolute; bottom: 0; left: 0; background: rgba(0,0,0,0.75); padding: 0.15rem 0.35rem; font-family: 'IBM Plex Mono', monospace; font-size: 0.55rem; color: var(--accent); }
+
+    #modal-meta { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: var(--border); }
+    .meta-cell { background: var(--surface); padding: 0.65rem 0.9rem; }
+    .meta-k { font-family: 'IBM Plex Mono', monospace; font-size: 0.52rem; letter-spacing: 0.15em; text-transform: uppercase; color: var(--muted); margin-bottom: 0.2rem; }
+    .meta-v { font-family: 'IBM Plex Mono', monospace; font-size: 0.68rem; color: var(--text); word-break: break-all; }
+
+    #modal-spinner { display: flex; justify-content: center; padding: 2.5rem; }
+
+    /* ─── Responsive ─────────────────────────── */
+    @media (max-width: 900px) { #stats { grid-template-columns: repeat(2, 1fr); } #modal-meta { grid-template-columns: repeat(2, 1fr); } main { padding: 1rem; } header { padding: 1rem; } }
+    @media (max-width: 560px) { .stat-val { font-size: 1.4rem; } }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="logo">Hands<em>—</em>Free <em>//</em> Incident Admin</div>
+    <div id="auth-area">
+      <span id="user-email"></span>
+      <button class="btn btn-login" id="login-btn">Log In</button>
+      <button class="btn" id="logout-btn" style="display:none">Log Out</button>
+    </div>
+  </header>
+
+  <div id="screen-loading" class="state-screen">
+    <div class="spinner"></div>
+    <div class="state-tag">Initialising</div>
+  </div>
+
+  <div id="screen-unauth" class="state-screen" style="display:none">
+    <div class="state-tag">Access Required</div>
+    <div class="state-headline">Admin Portal</div>
+    <div class="state-sub">Sign in with your authorised account to view incident reports.</div>
+    <button class="btn btn-login" id="login-btn-2">Log In</button>
+  </div>
+
+  <main id="screen-dashboard" style="display:none">
+    <div id="stats">
+      <div class="stat"><div class="stat-label">Total Reports</div><div class="stat-val" id="stat-total">—</div></div>
+      <div class="stat"><div class="stat-label">Completed</div><div class="stat-val" id="stat-done" style="color:var(--accent2)">—</div></div>
+      <div class="stat"><div class="stat-label">Pending</div><div class="stat-val" id="stat-pending" style="color:var(--warn)">—</div></div>
+      <div class="stat"><div class="stat-label">Errors</div><div class="stat-val" id="stat-error" style="color:var(--danger)">—</div></div>
+    </div>
+
+    <div id="controls">
+      <input id="search" type="text" placeholder="Search by ID, description, status…" />
+      <button class="btn" id="refresh-btn">↻ Refresh</button>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Report ID</th>
+            <th>Summary</th>
+            <th>Frames</th>
+            <th>Status</th>
+            <th>Location</th>
+            <th>Created</th>
+          </tr>
+        </thead>
+        <tbody id="table-body">
+          <tr class="loading-row"><td colspan="6">Loading reports…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </main>
+
+  <!-- Detail modal -->
+  <div id="overlay">
+    <div id="modal">
+      <div id="modal-header">
+        <span id="modal-report-id"></span>
+        <button id="modal-close">✕</button>
+      </div>
+      <div id="modal-body">
+        <div id="modal-spinner"><div class="spinner"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.auth0.com/js/auth0-spa-js/2.0/auth0-spa-js.production.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
