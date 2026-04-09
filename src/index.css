@@ -215,16 +215,28 @@ td { padding: 0.8rem 1rem; vertical-align: middle; }
   border: 1px solid var(--border); overflow: hidden;
 }
 .m-frame img,
-.m-frame-img { width: 100%; height: 200px; object-fit: cover; display: block; }
-.m-frame-conf {
-  position: absolute; bottom: 0; right: 0;
+.m-frame-img { width: 100%; height: 200px; object-fit: contain; display: block;}
+.m-frame-img-container { position: relative; }
+
+.m-frame-meta {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: space-between;
+}
+
+.m-frame-conf, .m-frame-mask {
   background: rgba(0,0,0,0.75); padding: 0.15rem 0.35rem;
   font-family: 'IBM Plex Mono', monospace; font-size: 0.55rem; color: var(--accent);
 }
-.m-frame-mask {
-  position: absolute; bottom: 0; left: 0;
-  background: rgba(0,0,0,0.75); padding: 0.15rem 0.35rem;
-  font-family: 'IBM Plex Mono', monospace; font-size: 0.55rem; color: var(--accent);
+
+.m-frame-location{
+  border: 1px solid var(--border);
+  overflow: hidden;
+  position: relative;
+  width: 100%;
 }
 
 #modal-meta {

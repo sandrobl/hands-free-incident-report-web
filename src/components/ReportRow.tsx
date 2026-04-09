@@ -23,9 +23,9 @@ export default function ReportRow({ report, detail, onFetchDetail, onClick }: Pr
   const visibleFrames = frames.slice(0, 4);
   const extraCount    = frames.length - visibleFrames.length;
 
-  const loc = detail?.location?.coordinates
+  const loc = detail?.location_upload?.coordinates
     ? (() => {
-        const [lng, lat] = detail.location!.coordinates;
+        const [lng, lat] = detail.location_upload!.coordinates;
         return `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
       })()
     : null;

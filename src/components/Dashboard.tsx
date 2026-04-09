@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
-import { MapContainer, TileLayer, CircleMarker, Tooltip } from 'react-leaflet';
+import { MapContainer, TileLayer, CircleMarker, Tooltip, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import { useApi } from '../hooks/useApi';
 import { ReportSummary, ReportDetail } from '../types';
@@ -12,6 +12,18 @@ function markerColor(status: string | null | undefined): string {
   if (s === 'done' || s === 'completed') return '#98BE59';
   if (s === 'error' || s === 'failed')   return '#c0392b';
   return '#6D9AC4';
+}
+
+function FitBounds({ bounds }: { bounds: [number, number][] }) {
+  const map = useMap();
+  useEffect(() => {
+    if (bounds.length === 1) {
+      map.setView(bounds[0], 13);
+    } else if (bounds.length > 1) {
+      map.fitBounds(bounds, { padding: [40, 40] });
+    }
+  }, [map, bounds]);
+  return null;
 }
 
 export default function Dashboard() {
@@ -124,19 +136,21 @@ export default function Dashboard() {
   const mapMarkers = useMemo(() =>
     allReports
       .map(r => ({ report: r, detail: detailCache[r.report_id] }))
-      .filter(({ detail }) => detail?.location?.coordinates),
+      .filter(({ detail }) => {
+        const coords = detail?.location_upload?.coordinates;
+        return Array.isArray(coords) && coords.length === 2 &&
+          typeof coords[0] === 'number' && typeof coords[1] === 'number';
+      }),
     [allReports, detailCache],
   );
 
-  // Default map centre — average of available points, or a fallback
-  const mapBounds = useMemo(() => {
-    if (mapMarkers.length === 0) return undefined;
-    return mapMarkers.map(({ detail }) => {
-      const [lng, lat] = detail!.location!.coordinates;
+  const mapBounds = useMemo(() =>
+    mapMarkers.map(({ detail }) => {
+      const [lng, lat] = detail!.location_upload!.coordinates;
       return [lat, lng] as [number, number];
-    });
-  }, [mapMarkers]);
-
+    }),
+    [mapMarkers],
+  );
   const dash = reportsLoading ? '—' : undefined;
 
   return (
@@ -162,24 +176,25 @@ export default function Dashboard() {
       </div>
 
       {/* Map */}
+      <div className="m-label">Report upload locations</div>
       <div style={{
         border: '1px solid var(--border)',
         marginBottom: '1.75rem',
         overflow: 'hidden',
         position: 'relative',
       }}>
-      {mapBounds && (
         <MapContainer
-          bounds={mapBounds}
+          center={[0, 0]}
+          zoom={2}
           style={{ height: '320px', width: '100%', background: 'var(--surface)' }}
-          scrollWheelZoom={false}
         >
           <TileLayer
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           />
+          <FitBounds bounds={mapBounds} />
           {mapMarkers.map(({ report, detail }) => {
-            const [lng, lat] = detail!.location!.coordinates;
+            const [lng, lat] = detail!.location_upload!.coordinates;
             return (
               <CircleMarker
                 key={report.report_id}
@@ -204,7 +219,7 @@ export default function Dashboard() {
             );
           })}
         </MapContainer>
-      )}
+
       </div>
 
       {/* Controls */}
@@ -230,7 +245,7 @@ export default function Dashboard() {
               <th>Summary</th>
               <th>Frames</th>
               <th>Status</th>
-              <th>Location</th>
+              <th>Upload Location</th>
               <th>Created</th>
             </tr>
           </thead>
@@ -264,6 +279,7 @@ export default function Dashboard() {
           isLoading={modalLoading}
           error={modalError}
           onClose={closeModal}
+          onOpenReport={openModal}
         />
       )}
     </main>

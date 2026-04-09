@@ -198,7 +198,6 @@ async function openModal(reportId) {
 
   try {
     const d = await fetchDetail(reportId);
-    console.log(d);
 
     const loc = d.location?.coordinates
       ? `${d.location.coordinates[1].toFixed(6)}, ${d.location.coordinates[0].toFixed(6)}`
