@@ -19,11 +19,13 @@ export interface ReportDetail extends ReportSummary {
   description_short?: string;
   description_synonyms?: string;
   description_full?: string;
+  segmented_word?: string;
   reported_frames?: ReportFrame[];
   location_upload?: {
     type: string;
     coordinates: [number, number]; // [lng, lat]
   };
+  orientation?: number | null;
   duplicate_of?: string | null;
   duplicate_confidence?: number | null;
   duplicates?: string[];

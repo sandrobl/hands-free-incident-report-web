@@ -4,7 +4,7 @@ import { ReportDetail } from '../types';
 import { formatDate } from '../utils/format';
 import AuthedImg from './AuthedImg';
 import { API_BASE } from '../config';
-import { MapContainer, TileLayer, CircleMarker, Tooltip } from 'react-leaflet';
+import { MapContainer, TileLayer, CircleMarker, Tooltip, Circle } from 'react-leaflet';
 
 interface Props {
   reportId: string;
@@ -38,6 +38,15 @@ export default function Modal({ reportId, detail, isLoading, error, onClose, onO
   const loc_upload = detail?.location_upload?.coordinates
     ? `${detail.location_upload.coordinates[1].toFixed(6)}, ${detail.location_upload.coordinates[0].toFixed(6)}`
     : '—';
+
+  // Debug log for data
+  useEffect(() => {
+    if (!detail) return;
+    console.log('Modal detail', detail);
+    detail.reported_frames?.forEach((frame, index) => {
+      console.log('Modal frame', index, frame);
+    });
+  }, [detail]);
 
   return createPortal(
     <div id="overlay" style={{ display: 'flex' }} onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
@@ -74,17 +83,29 @@ export default function Modal({ reportId, detail, isLoading, error, onClose, onO
               <div>
                 <div className="m-label">Description</div>
                 <div id="modal-short">
-                  {detail.description_short ?? (
+                  {detail.description_short ?(
+                    <div><span style={{fontWeight: 'bold'}}>Shortened description:</span><span>{detail.description_short}</span></div>
+                  ): (
                     <span style={{ color: 'var(--muted)', fontStyle: 'italic', fontWeight: 400 }}>No summary yet</span>
                   )}
                 </div>
                 <div id="modal-synonyms">
-                  {detail.description_synonyms ?? (
+                  {detail.description_synonyms ? (
+                    <div><span style={{fontWeight: 'bold'}}>Synonyms: </span><span>{detail.description_synonyms}</span></div>
+                  ) : (
                     <span style={{ color: 'var(--muted)' }}>Synonyms not yet generated.</span>
                   )}
                 </div>
+                <div id="modal-synonyms">
+                  {detail.segmented_word ? (
+                    <div><span style={{fontWeight: 'bold'}}>Word used for segmentation:</span> <span>{detail.segmented_word}</span></div>
+                  ):
+                  (<span style={{ color: 'var(--muted)' }}>Segmented word not yet generated.</span>)}
+                </div>
                 <div id="modal-full">
-                  {detail.description_full ?? (
+                  {detail.description_full ?(
+                    <div><span style={{fontWeight: 'bold'}}>Full description:</span> <span>{detail.description_full}</span></div>
+                  ): (
                     <span style={{ color: 'var(--muted)' }}>Full description not yet generated.</span>
                   )}
                 </div>
@@ -110,11 +131,11 @@ export default function Modal({ reportId, detail, isLoading, error, onClose, onO
                             </div>
                           </div>
                         </div>
-                        {f.location_segmented?.coordinates ? (
+                        {f.location_segmented?.coordinates && detail.orientation != null && (
                           <div className='m-frame-location'>
                             <MapContainer
                               style={{ height: '150px', width: '100%', background: 'var(--surface)' }}
-                              center={[f.location_segmented.coordinates[1], f.location_segmented.coordinates[0]]}
+                              center={[f.location_segmented!.coordinates[1], f.location_segmented!.coordinates[0]]}
                               zoom={40}
                             >
                               <TileLayer
@@ -123,8 +144,8 @@ export default function Modal({ reportId, detail, isLoading, error, onClose, onO
                               />
                               <CircleMarker
                                 key={reportId}
-                                center={[f.location_segmented.coordinates[1], f.location_segmented.coordinates[0]]}
-                                radius={8}
+                                center={[f.location_segmented!.coordinates[1], f.location_segmented!.coordinates[0]]}
+                                radius={3}
                                 pathOptions={{
                                   color: markerColor(detail.status),
                                   fillColor: markerColor(detail.status),
@@ -142,7 +163,54 @@ export default function Modal({ reportId, detail, isLoading, error, onClose, onO
                               </CircleMarker>
                             </MapContainer>
                           </div>
-                        ) : <span className='meta-v'>No segmented object location data.</span>}
+                        )}
+                        {detail.orientation == null && detail.location_upload?.coordinates && f.distance_median_from_reported_location != null && (
+                          <div className='m-frame-location'>
+                            <span style={{ color: 'var(--muted)', fontSize: '0.7rem', fontStyle: 'italic' }}>
+                              Estimation radius based on upload location and {f.distance_median_from_reported_location.toFixed(2)}m
+                            </span>
+                            <MapContainer
+                              style={{ height: '150px', width: '100%', background: 'var(--surface)' }}
+                              center={[detail.location_upload.coordinates[1], detail.location_upload.coordinates[0]]}
+                              zoom={40}
+                            >
+                              <TileLayer
+                                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                              />
+                              <CircleMarker
+                                key={reportId}
+                                center={[detail.location_upload.coordinates[1], detail.location_upload.coordinates[0]]}
+                                radius={3}
+                                pathOptions={{
+                                  color: markerColor(detail.status),
+                                  fillColor: markerColor(detail.status),
+                                  fillOpacity: 0.85,
+                                  weight: 1.5,
+                                }}
+                              >
+                                <Tooltip direction="top" offset={[0, -6]}>
+                                  <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.65rem' }}>
+                                    <strong>{detail?.description_short ?? reportId.slice(0, 8)}</strong>
+                                    <br />
+                                    {detail.status ?? 'pending'}
+                                  </span>
+                                </Tooltip>
+                              </CircleMarker>
+                              <Circle
+                                center={[
+                                  detail.location_upload.coordinates[1],
+                                  detail.location_upload.coordinates[0],
+                                ]}
+                                radius={f.distance_median_from_reported_location!}
+                                pathOptions={{
+                                  color: 'var(--accent2)',
+                                  weight: 1,
+                                }}
+                              />
+                            </MapContainer>
+                          </div>
+                        )}
                       </div>
                     ))
                   )}
@@ -158,7 +226,7 @@ export default function Modal({ reportId, detail, isLoading, error, onClose, onO
                       <MapContainer
                         style={{ height: '200px', width: '100%', background: 'var(--surface)' }}
                         center={[detail.location_upload.coordinates[1], detail.location_upload.coordinates[0]]}
-                        zoom={15}
+                        zoom={40}
                       >
                         <TileLayer
                           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
@@ -167,7 +235,7 @@ export default function Modal({ reportId, detail, isLoading, error, onClose, onO
                         <CircleMarker
                           key={reportId}
                           center={[detail.location_upload.coordinates[1], detail.location_upload.coordinates[0]]}
-                          radius={8}
+                          radius={3}
                           pathOptions={{
                             color: markerColor(detail.status),
                             fillColor: markerColor(detail.status),
